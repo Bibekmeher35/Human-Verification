@@ -131,12 +131,18 @@ Output example:
 }
 ```
 
----
+## Run on a folder (JSON or CSV output)
 
-## Run on a folder
+You can process all images in a folder at once and save the results as either a JSON file or a CSV spreadsheet based on the file extension of your `--output` path.
 
+**Export as JSON:**
 ```bash
 python app.py test_images --output outputs/results.json
+```
+
+**Export as CSV:**
+```bash
+python app.py test_images --output outputs/results.csv
 ```
 
 ---

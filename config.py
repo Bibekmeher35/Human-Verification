@@ -38,3 +38,10 @@ class ValidatorConfig:
     min_lowest_body_y_for_upper_body: float = 0.55
     min_shoulder_to_hip_span: float = 0.18
     min_face_to_torso_span: float = 0.32
+
+    # AI Detector Config
+    ai_detector_model_path: str = str(Path("models") / "ai_detector_mobilenetv3.tflite")
+    ai_detector_input_size: tuple[int, int] = (224, 224)
+    ai_suspicion_threshold_manual: float = 0.50
+    ai_suspicion_threshold_strict: float = 0.75
+    ai_suspicion_threshold_reject: float = 0.90

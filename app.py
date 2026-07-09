@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -68,6 +69,8 @@ def print_structured_report(result: dict) -> None:
             print(f"  • Face Confidence: {scores.get('face_confidence') * 100:.1f}%")
         if scores.get("body_status") is not None:
             print(f"  • Body Status:     {scores.get('body_status')} (Confidence: {scores.get('body_confidence', 0) * 100:.1f}%)")
+        if scores.get("ai_suspicion_score") is not None:
+            print(f"  • AI Suspicion Score: {scores.get('ai_suspicion_score') * 100:.1f}%")
     print(f"{BLUE}{'=' * 60}{RESET}\n")
 
 
@@ -105,11 +108,53 @@ def print_summary_table(results: list[dict]) -> None:
     print(f"{BLUE}{'=' * 90}{RESET}\n")
 
 
+def write_csv(results: list[dict], output_path: Path) -> None:
+    if not results:
+        return
+
+    headers = [
+        "image_path",
+        "flag",
+        "reasons",
+        "warnings",
+        "face_count",
+        "body_status",
+        "body_confidence",
+        "face_confidence",
+        "ai_suspicion_score",
+        "blur_score",
+        "brightness",
+        "contrast",
+        "image_width",
+        "image_height",
+        "face_height_ratio",
+        "face_width_ratio",
+        "space_below_face_ratio",
+        "face_center_x_ratio",
+        "face_center_y_ratio"
+    ]
+
+    with open(output_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=headers, extrasaction="ignore")
+        writer.writeheader()
+        for r in results:
+            row = {
+                "image_path": r.get("image_path"),
+                "flag": r.get("flag"),
+                "reasons": "; ".join(r.get("reasons", [])),
+                "warnings": "; ".join(r.get("warnings", [])),
+            }
+            scores = r.get("scores", {})
+            for k, v in scores.items():
+                row[k] = v
+            writer.writerow(row)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate person photos using SCRFD + MediaPipe Pose")
     parser.add_argument("input", help="Image file or folder path")
     parser.add_argument("--model", default=None, help="Path to SCRFD 2.5G ONNX model")
-    parser.add_argument("--output", default="outputs/results.json", help="Output JSON path")
+    parser.add_argument("--output", default="outputs/results.json", help="Output results path (JSON or CSV)")
     parser.add_argument("--pretty", action="store_true", help="Print formatted JSON")
     args = parser.parse_args()
 
@@ -155,11 +200,21 @@ def main() -> None:
     else:
         print_summary_table(results)
 
-    payload = results[0] if is_single_file and len(results) == 1 else results
-    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    # Save to output file (JSON or CSV)
+    if output_path.suffix.lower() == ".csv":
+        write_csv(results, output_path)
+        print(f"Results successfully saved to CSV: {output_path}")
+    else:
+        payload = results[0] if is_single_file and len(results) == 1 else results
+        output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"Results successfully saved to JSON: {output_path}")
 
     if args.pretty:
-        print(json.dumps(payload, indent=2))
+        if output_path.suffix.lower() == ".csv":
+            # Just print the CSV content
+            print(output_path.read_text(encoding="utf-8"))
+        else:
+            print(json.dumps(payload, indent=2))
 
 
 if __name__ == "__main__":

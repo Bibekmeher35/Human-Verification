@@ -1,6 +1,23 @@
 venv/
 __pycache__/
 *.pyc
+
+# Models
 models/*.onnx
-outputs/*.json
+models/*.tflite
+models/*.keras
+
+# Outputs
+outputs/*
+!outputs/.gitkeep
+
+# Test images
+test_images/**/*.png
+test_images/**/*.jpg
+test_images/**/*.jpeg
+!test_images/**/.gitkeep
+
+# Datasets
+training/ai_detector_dataset/
+
 .DS_Store

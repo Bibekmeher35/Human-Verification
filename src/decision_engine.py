@@ -9,6 +9,7 @@ def decide(
     quality: dict,
     geometry: dict,
     body: dict,
+    ai_suspicion_score: float | None = None,
 ) -> dict:
     reasons: list[str] = []
     warnings: list[str] = []
@@ -31,9 +32,29 @@ def decide(
         **{k: v for k, v in geometry.items() if k.endswith("ratio")},
     }
 
+    if ai_suspicion_score is not None:
+        scores["ai_suspicion_score"] = round(ai_suspicion_score, 4)
+
     face_count = face_result.get("face_count", 0)
     if face_count == 0:
         return _result("rejected", ["No face/person detected"], warnings, scores)
+
+    # Evaluate AI generated suspicion
+    ai_flag = None
+    ai_reasons = []
+    if ai_suspicion_score is not None:
+        if ai_suspicion_score >= cfg.ai_suspicion_threshold_reject:
+            ai_flag = "rejected"
+            ai_reasons.append("Highly suspicious synthetic/AI-generated image")
+        elif ai_suspicion_score >= cfg.ai_suspicion_threshold_strict:
+            ai_flag = "manual_verification"
+            warnings.append("High AI-generated image suspicion")
+        elif ai_suspicion_score >= cfg.ai_suspicion_threshold_manual:
+            ai_flag = "manual_verification"
+            warnings.append("Medium AI-generated image suspicion")
+
+    if ai_flag == "rejected":
+        return _result("rejected", ai_reasons, warnings, scores)
 
     faces = face_result.get("faces", [])
     primary_face = faces[0]
@@ -81,6 +102,11 @@ def decide(
     if body_status == "more_than_head_shoulders":
         reasons.append("One clear face detected")
         reasons.append("Pose landmarks show more than head and shoulders")
+        
+        if ai_flag == "manual_verification":
+            reasons.append("AI-generated image suspicion is medium or high")
+            return _result("manual_verification", reasons, warnings, scores)
+            
         if warnings:
             return _result("manual_verification", reasons, warnings, scores)
         return _result("acceptable", reasons, warnings, scores)
